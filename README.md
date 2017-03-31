@@ -9,9 +9,9 @@
 	"INSERT_PATH_TO_SOURCE_CODE_HERE/init.sh"
 
 
-*to run startracker*
+*to run startracker*:
 	$ star_tracker
-*to run the uart telemetry controller*
+*to run the uart telemetry controller*:
 	$ uartTMC
 
 _OTHER NOTES_
