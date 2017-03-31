@@ -1,6 +1,8 @@
-1) Navigate to directory containing the source code
+1) update code from this repo 
 
-2) ./setup.sh (compiles with 1 inconsequential warning)
+2) Navigate to directory containing the source code
+
+3) ./setup.sh (compiles with 1 inconsequential warning)
 
 
 *_TO RUN CODE ON STARTUP_*
