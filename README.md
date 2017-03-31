@@ -1,12 +1,12 @@
 1) Navigate to directory containing the source code
 
-2) ./setup.sh
+2) ./setup.sh (compiles with 1 inconsequential warning)
 
 
 *_TO RUN CODE ON STARTUP_*
-	add the following to /etc/rc.local (before the "exit 0")
+	add the following to */etc/rc.local* (before the "exit 0")
 	
-	INSERT_PATH_TO_SOURCE_CODE_HERE/init.sh
+	"INSERT_PATH_TO_SOURCE_CODE_HERE/init.sh"
 
 
 *to run startracker*
