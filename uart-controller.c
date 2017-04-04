@@ -207,12 +207,12 @@ int send_over_uart(struct UartOutput* output_ptr){
 	//											immediately with a failure status if the output can't be written immediately.
 	//
 	//	O_NOCTTY - When set and path identifies a terminal device, open() shall not cause the terminal device to become the controlling terminal for the process.
-	uart0_filestream = open(UART_DEVICE, O_RDONLY | O_NOCTTY | O_NDELAY);		//Open in non blocking read/write mode
+	uart0_filestream = open(UART_DEVICE, O_WRONLY | O_NOCTTY | O_NDELAY);		//Open in non blocking read/write mode
 	if (uart0_filestream == -1)
-		printf("%s\n","NO UART DEVICE AVAILABLE" );
 	{
+		printf("%s\n","NO UART DEVICE AVAILABLE" );
 		//ERROR - CAN'T OPEN SERIAL PORT
-		// printf("Error - Unable to open UART.  Ensure it is not in use by another application\n");
+		 printf("Error - Unable to open UART.  Ensure it is not in use by another application\n");
 	}
 
 	//CONFIGURE THE UART
@@ -227,20 +227,19 @@ int send_over_uart(struct UartOutput* output_ptr){
 	//	PARODD - Odd parity (else even)
 	struct termios options;
 	tcgetattr(uart0_filestream, &options);
-	options.c_cflag = B1152000 | CS8 | CLOCAL | CREAD;		//<Set baud rate
+	options.c_cflag = B115200 | CS8 | CLOCAL | CREAD;		//<Set baud rate
 	options.c_iflag = IGNPAR;
 	options.c_oflag = 0;
 	options.c_lflag = 0;
 	tcflush(uart0_filestream, TCIFLUSH);
 	tcsetattr(uart0_filestream, TCSANOW, &options);
 
-
 	if (uart0_filestream != -1)
 	{
 		int count = write(uart0_filestream, output_ptr, 21);		//Filestream, bytes to write, number of bytes to write
 		if (count < 0)
 		{
-			// printf("UART TX error\n");
+			 printf("UART TX error\n");
 		}
 	}
 
