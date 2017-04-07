@@ -15,3 +15,6 @@ echo '====================DMA CONTROLLER========================';
 #creating the UART pipe
 mkfifo uart_input.cstars
 mkfifo dma_input.cstars
+
+#removing the previous telemetry stash
+rm telemetry_stash.cstars
