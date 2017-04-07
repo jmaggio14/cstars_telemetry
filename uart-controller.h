@@ -1,7 +1,7 @@
 #define SLEEP_TIME (1e5) //microseconds
 #define TIME_TILL_INACTIVE (1e6) //microseconds
 
-#define UART_DEVICE "/dev/ttyACM1"
+#define UART_DEVICE "/dev/ttyPS1"
 #define UART_INPUT "uart_input.cstars"
 #define ON_TARGET_PIPE "/sys/class/gpio/gpio54/value"
 #define SHUTTER_DOOR_PIPE "/sys/class/gpio/gpio55/value"
