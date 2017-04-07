@@ -10,7 +10,7 @@ UART_PID=$!
 sleep 1
 
 #STARting star tracker
-#/root/scripts/cstars_telemtry/star_tracker &
+#/root/scripts/cstars_telemetry/star_tracker &
 #TRACKER_PID=$!
 
 #dma_controller&
