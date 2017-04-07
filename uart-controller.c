@@ -81,7 +81,7 @@ int main(int argc, char const *argv[])
 				else{
 					alive = 1;
 				}
-				logToFile(0, "'--> SENDING OLD TELEMETRY w/ new status_word & checksum");
+				logToFile(0, "'--> SENDING ZEROED TELEMETRY w/ new status_word & checksum");
 				output.status_word = construct_status_word(0,alive);
 				output.x = 0;
 				output.y = 0;
