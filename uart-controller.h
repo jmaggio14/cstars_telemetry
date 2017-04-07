@@ -10,12 +10,12 @@
 
 
 // masks
-#define ALIVE_MASK (uint16_t)0x8000
-#define BUSY_MASK (uint16_t)0x4000
-#define LOCKED_MASK (uint16_t)0x2000
-#define ROLL_MASK (uint16_t)0x1000
-#define TARGET_MASK (uint16_t)0x0800
-#define DOOR_MASK (uint16_t)0x0400
+#define ALIVE_MASK  (uint16_t)0b1000000000000000
+#define BUSY_MASK   (uint16_t)0b0100000000000000
+#define LOCKED_MASK (uint16_t)0b0010000000000000
+#define ROLL_MASK   (uint16_t)0b0001000000000000
+#define TARGET_MASK (uint16_t)0x0000100000000000
+#define DOOR_MASK   (uint16_t)0x0000010000000000
 
 #define UART_OUTPUT_SIZE 21
 #define SHOULD_LOG_TO_FILE 1
@@ -26,7 +26,7 @@ struct UartOutput {
         char header2; //1
         uint32_t frame_counter; //2,3,4,5
         uint16_t status_word; //6,7
-        int     x; //8,9,10,11
+        int x; //8,9,10,11
         int y; //12,13,14,15
         int z; //16,17,18,19
         char checksum; //20
