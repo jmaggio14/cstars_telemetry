@@ -8,121 +8,133 @@
 #include <stdint.h>
 #include <string.h>
 // sudo chmod a+rw /dev/ttyAMA0
+#include "uart-controller.h"
 
 
-#define SLEEP_TIME (1e5) //microseconds
-#define TIME_TILL_INACTIVE (1e6) //microseconds
+// #define SLEEP_TIME (1e5) //microseconds
+// #define TIME_TILL_INACTIVE (1e6) //microseconds
+//
+// #define UART_DEVICE "/dev/ttyACM0"
+// #define UART_INPUT "uart_input.cstars"
+// #define ON_TARGET_PIPE "/sys/class/gpio/gpio54/value"
+// #define SHUTTER_DOOR_PIPE "/sys/class/gpio/gpio55/value"
+// #define LOG_FILE "status_log.cstars"
+// #define TELEMETRY_STASH "telemetry_stash.cstars"
+//
+//
+// // masks
+// #define ALIVE_MASK (uint16_t)0x8000
+// #define BUSY_MASK (uint16_t)0x4000
+// #define LOCKED_MASK (uint16_t)0x2000
+// #define ROLL_MASK (uint16_t)0x1000
+// #define TARGET_MASK (uint16_t)0x0800
+// #define DOOR_MASK (uint16_t)0x0400
+//
+// #define UART_OUTPUT_SIZE 21
+// #define SHOULD_LOG_TO_FILE 1
+//
+//
+// //structs
+// struct UartOutput {
+// 	char header1; //0
+// 	char header2; //1
+// 	uint32_t frame_counter; //2,3,4,5
+// 	uint16_t status_word; //6,7
+// 	int	x; //8,9,10,11
+// 	int y; //12,13,14,15
+// 	int z; //16,17,18,19
+// 	char checksum; //20
+// }; //21 BYTES TOTAL
+//
+//
+//
+// //prototypes
+// char update_checksum(struct UartOutput* output_ptr);
+// uint16_t construct_status_word(uint16_t num_stars, int alive);
+// int send_over_uart(struct UartOutput* output_ptr);
+// int logToFile(int func_id, char message[]);
+// int logTelemetryToFile(struct UartOutput telemetry);
 
-#define UART_DEVICE "/dev/ttyPS1"
-#define UART_INPUT "uart_input.cstars"
-#define ON_TARGET_PIPE "/sys/class/gpio/gpio54/value"
-#define SHUTTER_DOOR_PIPE "/sys/class/gpio/gpio55/value"
 
-// masks
-#define ALIVE_MASK (uint16_t)0x8000
-#define BUSY_MASK (uint16_t)0x4000
-#define LOCKED_MASK (uint16_t)0x2000
-#define ROLL_MASK (uint16_t)0x1000
-#define TARGET_MASK (uint16_t)0x0800
-#define DOOR_MASK (uint16_t)0x0400
-
-#define UART_OUTPUT_SIZE 21
-
-struct UartOutput {
-	char header1; //0
-	char header2; //1
-	uint32_t frame_counter; //2,3,4,5
-	uint16_t status_word; //6,7
-	int	x; //8,9,10,11
-	int y; //12,13,14,15
-	int z; //16,17,18,19
-	char checksum; //20
-};
+//global vars
+int global_log_count = 0;
+int global_loop_index = 0;
 
 
-
-
-char update_checksum(struct UartOutput* output_ptr);
-uint16_t construct_status_word(unsigned short errorout[1024], int alive);
-int send_over_uart(struct UartOutput* output_ptr);
-
+//setting up starting log
 
 int main(int argc, char const *argv[])
-//argv[1] --> INPUT NAME
-//argv[2] --> DEVICE TO WRITE TO
 {
+	logToFile(0, "\n\n////////////////// uartTMC START ///////////////////////\n\n");
+
+	// logToFile("+++++++++++++++++++++ main() +++++++++++++++++++++++++++++");
 	time_t last_time_active;
 	last_time_active = time(NULL);
 
 	struct UartOutput output;
-	unsigned short errorout[1024];
 	int e;
+	unsigned short errorout[1024];
 	int alive = 0;
-	usleep(.5); //necessary on boot
+	usleep(TIME_TILL_INACTIVE); //--> necessary for star_tracker ALIVE signal determination to work
 
-	//SETTING DEFAULT VALUES FOR OUTPUT
-	// strcpy(output.header, 'C'); //never changes
-	// strcpy(output.header, 'T'); //never changes
-	output.header1 = 'C';
-	output.header2 = 'T';
+	logToFile(0, "building initial telemetry struct");
+	output.header1 = 'C'; //constant
+	output.header2 = 'T'; //constant
 	output.frame_counter = 0; //increments by 1 every new image input
-	output.status_word = 0x0000;
+	output.status_word = 0x0000; //will update with each new image
 	output.x = 0; //updates with each new image
 	output.y = 0; //updates with each new image
 	output.z = 0; //updates with each new image
 	output.checksum = update_checksum(&output); //updates with each new iteration
 
+
+	//checking if telemetry_stash exists -- should only exist if crash occurs
+	//if it exists, read in old telemetry
+	if ( access(TELEMETRY_STASH,F_OK) != -1 ){
+		logToFile(0, "loading in telemetry stash from file");
+		FILE* initial_telemetry = fopen(TELEMETRY_STASH,"r");
+		fread(&output,1,UART_OUTPUT_SIZE,initial_telemetry);
+		// memcpy(&output,buff,UART_OUTPUT_SIZE);
+		fclose(initial_telemetry);
+	}
+
 	// int index = 0;
+	logToFile(0, "|||||||| beginning persistent loop |||||||");
 	while(1){
-		// printf("%d\n",index++);
-		// printf("%s\n","SLEEPING");
-		// printf("%s\n","AWAKE");
+		// logToFile(0,"\n BEGIN NEW LOOP THROUGH");
+		logToFile(0, "setting input buffer to all zeros");
 		for(e=0;e<1024;e++){
 			errorout[e] = 0;  // reseting values to zero
 		}
-		// printf("%s\n","ERROROUT SET TO 0");
-
-		//CHECKING FOR IMAGE
- 	// 	int fifo_d = open(UART_INPUT, O_RDONLY | O_NOCTTY | O_NDELAY);		//Open in non blocking read/write mode
-		// fcntl(fifo_d, F_SETFL, O_NONBLOCK);
-		// ssize_t x = read(fifo_d, &errorout, 1024);
-		// close(fifo_d);
-		// printf("FILE HANDLE %d\n",fifo_d);
-		// int print_i;
-		// for(print_i=0;print_i<1024;print_i++) printf("%u\n",errorout[print_i]);
-
-		//IMPLEMENTING non-blocking fifo --> should exit if there isn't an issue
-		// FILE* image_fifo = popen(UART_INPUT,"r");
-		// FILE* image_fifo = open(UART_INPUT,"r");
-		// printf("EOF: %zd\n",eof_loc );
-		// int image_fifo_d = fileno(image_fifo);
+		//openning UART_INPUT in non-blocking mode
+		logToFile(0, "opening uart_input.cstars in non-blocking mode");
 		int image_fifo_d = open(UART_INPUT, O_RDONLY | O_NOCTTY | O_NDELAY);		//Open in non blocking read/write mode
-		// fcntl(image_fifo_d,F_SETFL,O_NONBLOCK);
-		usleep(SLEEP_TIME); //sleeping at 10Hz
-		// printf("errno: %d\n",errno );
+		logToFile(0, "sleeping for 100 milliseconds for timing purposes");
+		usleep(SLEEP_TIME); //sleeping at period of 10Hz
+		logToFile(0, "attempting to read uart_input.cstars into input buffer");
 		ssize_t x = read(image_fifo_d,&errorout,2048);
-		// printf("errno: %d\n",errno );
-
 		close(image_fifo_d);
 
 		// printf("x: %zd\n",x);
-		if ( (x < 0 && errno == EAGAIN) ){ //data is unavailable
-				printf("NO IMAGE AVAILABLE\n");
+		if ( (x != 2048) ){ //data is unavailable
+				logToFile(0, "NO INPUT DATA AVAILABLE or read error from uart_input.cstars");
 				if( (time(NULL) - last_time_active) > TIME_TILL_INACTIVE){
 					alive = 0;
 				}
 				else{
 					alive = 1;
 				}
-				output.status_word = construct_status_word(errorout,alive);
+				logToFile(0, "'--> SENDING OLD TELEMETRY w/ new status_word & checksum");
+				output.status_word = construct_status_word(0,alive);
 				output.checksum = update_checksum(&output);
 			}
 
 		else{ //WE HAVE AN IMAGE
-				// printf("WE HAVE AN IMAGE\n");
+				logToFile(0, "INPUT READ SUCCESSFUL");
+				logToFile(0, "begin construction of new telemetry struct");
 				output.frame_counter++; //new frame
 				//assigning proper inputs from errorout
-				output.status_word = construct_status_word(errorout,1);
+				output.status_word = construct_status_word(errorout[1],1);
 				output.x = errorout[4];
 				output.y = errorout[5];
 				output.z = errorout[6];
@@ -131,12 +143,22 @@ int main(int argc, char const *argv[])
 			}
 		// printf("frame_counter: %d\n",output.frame_counter );
 		send_over_uart(&output);
-		// break;
-	}
+
+		//WRITE TO TELEMETRY_STASH
+		logToFile(0, "saving current telemetry to telemetry stash");
+		FILE* telemetry_stash = fopen(TELEMETRY_STASH,"w");
+		fwrite(&output,1,UART_OUTPUT_SIZE,telemetry_stash);
+		fclose(telemetry_stash);
+
+		global_loop_index++;
+
+		logTelemetryToFile(output);
+	} //end while
 	return 0;
 }
 
 char update_checksum(struct UartOutput* output_ptr){
+		// logToFile("++++++++++++++ update_checksum() +++++++++++++++++++++");
 		// int i;
 		// char sum = 0x00;
 		// for(i=0;i<21;i++){
@@ -145,7 +167,9 @@ char update_checksum(struct UartOutput* output_ptr){
 		// size_t len = sizeof(struct UartOutput);
 		size_t len = UART_OUTPUT_SIZE;
 		unsigned char* data;
-		data = output_ptr;
+		data = (unsigned char*) output_ptr;
+
+		logToFile(2,"computing checksum");
 		unsigned char sum = 0;
 		while(len--){
 			 sum += *data++;
@@ -156,11 +180,17 @@ char update_checksum(struct UartOutput* output_ptr){
 		return sum;
 	}
 
-uint16_t construct_status_word(unsigned short errorout[1024], int alive){
+uint16_t construct_status_word(uint16_t num_stars, int alive){
+	// logToFile("+++++++++++++++ construct_status word() +++++++++++++++++");
 	uint16_t status_word = 0x0000; //all zeros initially
-	uint16_t num_stars = errorout[1];
 
-	if (alive) status_word = status_word | ALIVE_MASK;
+	if (alive == 1){
+		logToFile(1,"star_tracker considered ALIVE");
+		status_word = status_word | ALIVE_MASK;
+	}
+	else{
+		logToFile(1,"star_tracker considered DEAD");
+	}
 
 	if(num_stars < 3)	{
 		status_word = status_word | BUSY_MASK;
@@ -171,6 +201,7 @@ uint16_t construct_status_word(unsigned short errorout[1024], int alive){
 	}
 
 	//CHECKING ON-TARGET (non-blocking)
+	logToFile(1,"checking ON-TARGET signal");
 	char on_target = '0';
 	int fifo_target = open(UART_DEVICE, O_RDONLY | O_NOCTTY | O_NDELAY);		//Open in non blocking read/write mode
 	/*size_t t = */read(fifo_target, &on_target, 1);
@@ -179,6 +210,7 @@ uint16_t construct_status_word(unsigned short errorout[1024], int alive){
 	if (on_target!='0') status_word = status_word | TARGET_MASK;
 
 	//SHUTTER DOOR SIGNALS (non-blocking)
+	logToFile(1,"checking SHUTTER-DOOR signal");
 	char shutter_door = '0';
 	int fifo_door = open(UART_DEVICE, O_RDONLY | O_NOCTTY | O_NDELAY);		//Open in non blocking read/write mode
 	/*size_t s = */read(fifo_door, &shutter_door, 1);
@@ -190,6 +222,7 @@ uint16_t construct_status_word(unsigned short errorout[1024], int alive){
 
 
 int send_over_uart(struct UartOutput* output_ptr){
+	// logToFile("+++++++++++++++++ send_over_uart() +++++++++++++++++++++++");
 	//-------------------------
 	//----- SETUP USART 0 -----
 	//-------------------------
@@ -207,12 +240,12 @@ int send_over_uart(struct UartOutput* output_ptr){
 	//											immediately with a failure status if the output can't be written immediately.
 	//
 	//	O_NOCTTY - When set and path identifies a terminal device, open() shall not cause the terminal device to become the controlling terminal for the process.
+	logToFile(3,"opening uart device in non-blocking mode");
 	uart0_filestream = open(UART_DEVICE, O_WRONLY | O_NOCTTY | O_NDELAY);		//Open in non blocking read/write mode
 	if (uart0_filestream == -1)
 	{
-		printf("%s\n","NO UART DEVICE AVAILABLE" );
+		logToFile(3,"UNABLE TO CONNECT TO UART DEVICE");
 		//ERROR - CAN'T OPEN SERIAL PORT
-		 printf("Error - Unable to open UART.  Ensure it is not in use by another application\n");
 	}
 
 	//CONFIGURE THE UART
@@ -227,7 +260,7 @@ int send_over_uart(struct UartOutput* output_ptr){
 	//	PARODD - Odd parity (else even)
 	struct termios options;
 	tcgetattr(uart0_filestream, &options);
-	options.c_cflag = B115200 | CS8 | CLOCAL | CREAD;		//<Set baud rate
+	options.c_cflag = B9600 | CS8 | CLOCAL | CREAD;		//<Set baud rate
 	options.c_iflag = IGNPAR;
 	options.c_oflag = 0;
 	options.c_lflag = 0;
@@ -236,10 +269,14 @@ int send_over_uart(struct UartOutput* output_ptr){
 
 	if (uart0_filestream != -1)
 	{
+		logToFile(3,"connected to uart device");
 		int count = write(uart0_filestream, output_ptr, 21);		//Filestream, bytes to write, number of bytes to write
 		if (count < 0)
 		{
-			 printf("UART TX error\n");
+			logToFile(3,"**********UART WRITE FAILURE***************");
+		}
+		else{
+			logToFile(3,"*********UART WRITE SUCCESSFUL*************");
 		}
 	}
 
@@ -249,3 +286,66 @@ int send_over_uart(struct UartOutput* output_ptr){
 
 	return 0;
 }
+
+
+
+
+int logToFile(int func_id, char message[]){
+	//opening log in append mode
+	//FORMAT: [loop_index]: message
+	char func[25];
+	if (func_id == 0) {
+		strcpy(func,"         main()        ");
+	}
+	else if(func_id == 1){
+		strcpy(func,"construct_status_word()");
+	}
+	else if(func_id == 2){
+		strcpy(func,"   update_checksum()   ");
+	}
+	else{
+		strcpy(func,"    send_over_uart()   ");
+	}
+
+	if(SHOULD_LOG_TO_FILE){
+		FILE* error_log = fopen(LOG_FILE,"a");
+		fprintf(error_log, "[%i] loop#%i | %s |%s\n", global_log_count,
+		 													global_loop_index, func, message);
+		fclose(error_log);
+	}
+		global_log_count++;
+	return 0;
+}
+
+
+int logTelemetryToFile(struct UartOutput telemetry){
+	if(SHOULD_LOG_TO_FILE){
+		FILE* error_log = fopen(LOG_FILE,"a");
+
+		fprintf(error_log,
+				"header: %c%c\nframe_counter: %u\nstatus_word: %hu\ndelta x: %i\ndelta y: %i\ndelta z: %i\nchecksum: %c\n\n\n",
+				telemetry.header1,
+				telemetry.header2,
+				telemetry.frame_counter,
+				telemetry.status_word,
+				telemetry.x,
+				telemetry.y,
+				telemetry.z,
+				telemetry.checksum);
+
+		fclose(error_log);
+	}
+	return 0;
+}
+
+// //structs
+// struct UartOutput {
+// 	char header1; //0
+// 	char header2; //1
+// 	uint32_t frame_counter; //2,3,4,5
+// 	uint16_t status_word; //6,7
+// 	int	x; //8,9,10,11
+// 	int y; //12,13,14,15
+// 	int z; //16,17,18,19
+// 	char checksum; //20
+// }; //21 BYTES TOTAL
