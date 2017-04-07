@@ -1,5 +1,5 @@
 #define SLEEP_TIME (1e5) //microseconds
-#define TIME_TILL_INACTIVE (1e6) //microseconds
+#define TIME_TILL_INACTIVE (1) //seconds
 
 #define UART_DEVICE "/dev/ttyPS1"
 #define UART_INPUT "uart_input.cstars"

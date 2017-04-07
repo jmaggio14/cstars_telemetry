@@ -118,6 +118,8 @@ int main(int argc, char const *argv[])
 		// printf("x: %zd\n",x);
 		if ( (x != 2048) ){ //data is unavailable
 				logToFile(0, "NO INPUT DATA AVAILABLE or read error from uart_input.cstars");
+				//checking last time since data read and assuming star tracker is dead
+				// after TIME_TILL_INACTIVE
 				if( (time(NULL) - last_time_active) > TIME_TILL_INACTIVE){
 					alive = 0;
 				}
@@ -185,11 +187,11 @@ uint16_t construct_status_word(uint16_t num_stars, int alive){
 	uint16_t status_word = 0x0000; //all zeros initially
 
 	if (alive == 1){
-		logToFile(1,"star_tracker considered ALIVE");
+		logToFile(1,"input recieved recently, star_tracker considered ALIVE");
 		status_word = status_word | ALIVE_MASK;
 	}
 	else{
-		logToFile(1,"star_tracker considered DEAD");
+		logToFile(1,"no recent input, star_tracker considered DEAD");
 	}
 
 	if(num_stars < 3)	{
@@ -260,7 +262,7 @@ int send_over_uart(struct UartOutput* output_ptr){
 	//	PARODD - Odd parity (else even)
 	struct termios options;
 	tcgetattr(uart0_filestream, &options);
-	options.c_cflag = B9600 | CS8 | CLOCAL | CREAD;		//<Set baud rate
+	options.c_cflag = B115200 | CS8 | CLOCAL | CREAD;		//<Set baud rate
 	options.c_iflag = IGNPAR;
 	options.c_oflag = 0;
 	options.c_lflag = 0;
